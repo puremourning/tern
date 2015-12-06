@@ -90,7 +90,102 @@ exports.runTests = function(filter, caseDir) {
     if (m = text.match(/\/\/ loadfiles=\s*(.*)\s*\n/))
       m[1].split(/,\s*/g).forEach(function(f) {server.addFile(f);});
 
-    var typedef = /\/\/(<)?(\+\??|:\?|::?|doc\+?:|loc:|refs:|origin:|exports:) *([^\r\n]*)/g;
+    //
+    // API:
+    //
+    // Test cases are files named *.js in the cases/ subdirectory. They consist
+    // of javascript files which are passed to tern with embedded commands
+    // within the code to run specific checks at specific points in the file.
+    //
+    // All commands are found in line comments, beginning with '//' followed by
+    // an optional indicator regarding <TODO: directlyHere>, followed by
+    // a command followed by optional whitespace, then a list of parameters up
+    // to the end of line. That is
+    //
+    //   - //{optional <}{command} {arguments}[NEWLINE]
+    //
+    // The optional '<' after // indicates that <TODO>
+    //
+    // Commands are:
+    //   - //+
+    //   - //+?
+    //   - //+!
+    //   - //+?!
+    //     Test for the 'completion' query.
+    //
+    //     Summary:
+    //     //+ completion1[, completion2[, ...]] [@column offset]
+    //     //+? guess_completion1[, guess_completion2[, ...]] [@column offset]
+    //
+    //     The '?' in the command enables guessing.
+    //     The '!' in the command, which must follow the optional '?' disables
+    //     filtering.
+    //
+    //     Arguments are a comma-separated list of completions to expect (in the
+    //     order to expect then) at the query location, optionally followed
+    //     by '...' indicating that other completions may be provided (and
+    //     ignored).
+    //
+    //     Query location:
+    //     Arguments may end with: @<1-based column number> to specify the
+    //     exact column number on which to perform the query, otherwise the
+    //     character before the last ; or ' is used.
+    //
+    //     The "directlyHere" argument is ignored.
+    //
+    //   - //:
+    //   - //:?
+    //   - //::
+    //   - //::?
+    //
+    //     Test the 'type' query.
+    //
+    //     The '?' in the command enables guessing. That is if the result is a
+    //     guess, then the guessed result is returned. If the '?' is not
+    //     supplied, or no guess is available, the resulting type is set to the
+    //     literal '?'
+    //
+    //     When the query starts '::', use a 'depth' of 5, rather than the
+    //     default.
+    //
+    //     Arguments are the exact type expected to be returned by tern.
+    //
+    //     Query location:
+    //     if the "directlyHere" argument ('//<') is supplied, then the query
+    //     is made immediately prior to the previous ';', ':' or ',' on the
+    //     line. Otherwise, the query is made at the point of last detected
+    //     expression on the line. If no expression is detected, then the test
+    //     fails.
+    //
+    //   - //doc:
+    //   - //doc+:
+    //
+    //     Test the 'documentation' query
+    //
+    //     Arguments is a string representing the expected documentation
+    //     result with newlines replaced by literal '\n', for example:
+    //
+    //     //: This is the docstring\nThis is the second line.
+    //
+    //     The '+' indicates that the 'full' documentation should be returned.
+    //
+    //   - //loc:
+    //
+    //     Test the 'definition' query
+    //
+    //   - //refs:
+    //
+    //     Test the 'refs' query
+    //
+    //   - //origin:
+    //
+    //     Tests the 'origin' property of the 'type' query
+    //
+    //   - //exports:
+    //
+    //     Test the 'exports' query
+    //
+    var typedef = /\/\/(<)?(\+\??!?|:\?|::?|doc\+?:|loc:|refs:|origin:|exports:) *([^\r\n]*)/g;
     function fail(m, str) {
       util.failure(name + ", line " + acorn.getLineInfo(text, m.index).line + ": " + str);
     }
@@ -98,7 +193,7 @@ exports.runTests = function(filter, caseDir) {
     while (m = typedef.exec(text)) (function(m) {
       var args = m[3], kind = m[2], directlyHere = m[1];
       util.addTest();
-      if (kind == "+" || kind == "+?") { // Completion test
+      if (kind == "+" || kind == "+?" || kind == "+!" || kind == "+?!") { // Completion test
         var columnInfo = /\s*@(\d+)$/.exec(args), pos = m.index;
         if (columnInfo) {
           var line = acorn.getLineInfo(text, m.index).line;
@@ -108,7 +203,7 @@ exports.runTests = function(filter, caseDir) {
           while (/[\s;]/.test(text.charAt(pos - 1))) --pos;
           if (/['"]/.test(text.charAt(pos - 1))) --pos;
         }
-        var query = {type: "completions", end: pos, file: fname, guess: kind == "+?"};
+        var query = {type: "completions", end: pos, file: fname, guess: kind == "+?", filter: !kind.endsWith('!')};
         var andOthers = /,\s*\.\.\.$/.test(args);
         if (andOthers) args = args.slice(0, args.lastIndexOf(","));
         var parts = args ? args.split(/\s*,\s*/) : [];
