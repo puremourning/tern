@@ -8,3 +8,6 @@ a = 10;
 a. //+ forEach, toFixed, ...
 
 Object.crea //+ create @8
+Object.crea //+ create @9
+Object.crea //+! apply, assign, bind, ... @8
+Object.crea //+! apply, assign, bind, ... @9

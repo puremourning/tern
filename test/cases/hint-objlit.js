@@ -21,6 +21,38 @@ var example = {
   bar: true
 };
 
+example.    //+ bar, foo, food @9
+example.f   //+ foo, food @9
+example.bar //+ bar @9
+example.    //+? bar, foo, food @9
+example.f   //+? foo, food @9
+example.bar //+? bar @9
+
+example.    //+! bar, foo, food @9
+example.f   //+! bar, foo, food, hasOwnProperty, ... @9
+example.bar //+! bar, foo, food, hasOwnProperty, ... @9
+example.    //+?! bar, foo, food @9
+example.f   //+?! bar, foo, food, hasOwnProperty, ... @9
+example.bar //+?! bar, foo, food, hasOwnProperty, ... @9
+
+example.    //+ bar, foo, food @10
+example.f   //+ foo, food @10
+example.bar //+ bar @9
+example.    //+? bar, foo, food @10
+example.f   //+? foo, food @10
+example.bar //+? bar @10
+
+example.    //+! bar, foo, food @10
+example.f   //+! bar, foo, food, hasOwnProperty, ... @10
+example.bar //+! bar, foo, food, hasOwnProperty, ... @10
+example.    //+?! bar, foo, food @10
+example.f   //+?! bar, foo, food, hasOwnProperty, ... @10
+example.bar //+?! bar, foo, food, hasOwnProperty, ... @10
+
+example.no    //+! bar, foo, food, hasOwnProperty, ... @9
+example.not   //+! bar, foo, food, hasOwnProperty, ... @9
+example.isProp //+! bar, foo, food, hasOwnProperty, ... @9
+
 function takes(example) { return example; }
 takes(example);
 
